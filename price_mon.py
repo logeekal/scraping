@@ -1,5 +1,6 @@
 from cgi import parse_qs, escape
 import urllib2
+import urlparse
 import requests
 from wsgiref.simple_server import make_server
 from cgi import parse_qs, escape
@@ -40,6 +41,20 @@ Thank you for the code : %s
 </html>
 """
 
+reg_html = """
+<html>
+<head> <title> Resgiteration URL to monitor the price </title></head>
+
+<body>
+	<form method='post' action='/register'>
+		Please Enter the desired URL : <input type=text name=url>
+					       <input type=submit value=Submit>
+	</form>	 
+</body>
+</html>
+"""
+
+
 def display_env(environ,start_response):
 	env_list = ['%s : %s' % (key, value) for key, value in sorted(environ.items())]
 	
@@ -69,7 +84,7 @@ def login(environ, start_response):
 	url= 'https://accounts.google.com/o/oauth2/auth?response_type=code&' + resp_url_params + '&' +  scope_url
 	print url 	#Url prepared for getting the authorization code for google Oauth.
 	
-	start_response('304 Not Modified', [('Location',url)])   # Need to redirect the user to Google url
+	start_response('302 Found', [('Location',url)])   # Need to redirect the user to Google url
 	
 	'''response = urllib2.urlopen(url)
 #	print response.read()
@@ -84,7 +99,7 @@ def login(environ, start_response):
 	response = response.read().encode('UTF-8')
 	print type(response)
 	return [response]'''
-	return ["""<html></html>"""]
+	return ['1']
 def index(environ, start_response):
 	HOST = environ['REMOTE_ADDR']
 	name = ''
@@ -104,69 +119,102 @@ def index(environ, start_response):
 
 def oauth2callback(environ, start_response):
 	#Read the Authorization code sent by Google
-	qs = parse_qs(environ['QUERY_STRING'])
-	code = qs.get('code')[0]
+	qs = urlparse.parse_qs(environ['QUERY_STRING'])
+	code = qs['code'][0]
 	access_params = {}
-	access_params['code'] = code
-	'''
-	#############################################################################################################
-	################                            For Second CallBack 			#######################
-	###############  Now request the access token with that authorization code recived   	#######################
-	#############################################################################################################
-	'''
-	file = open(CLIENT_SECRETS,'r')
-	cs = ast.literal_eval(file.read())
-	cs = cs['web']	
-	'''
-	#######################################################################333
-	POST Request with paramters with following format
-	code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&
-	client_id=8819981768.apps.googleusercontent.com&
-	client_secret={client_secret}&
-	redirect_uri=https://oauth2-login-demo.appspot.com/code&
-	grant_type=authorization_code
-	########################################################################
-	'''
-	access_params['client_id'] = cs['client_id']
-	access_params['client_secret'] = '7mZpvp7IZtfIgpZT-mA8qa7B'
-	access_params['redirect_uri'] = cs['redirect_uri']
-	access_params['grant_type'] =  'authorization_code'
-	params =  urllib.urlencode(access_params)
-	url_access_token = 'https://accounts.google.com/o/oauth2/token' 
-	req = urllib2.Request(url_access_token, params) #Post request
 	
-	response = urllib2.urlopen(req)
+	if code != '':
+		access_params['code'] = code
+		'''
+		#############################################################################################################
+		################                            For Second CallBack 			#######################
+		###############  Now request the access token with that authorization code recived   	#######################
+		#############################################################################################################	
+		'''
+		file = open(CLIENT_SECRETS,'r')
+		cs = ast.literal_eval(file.read())
+		cs = cs['web']	
+		'''
+		#######################################################################333
+		POST Request with paramters with following format
+		code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&
+		client_id=8819981768.apps.googleusercontent.com&
+		client_secret={client_secret}&
+		redirect_uri=https://oauth2-login-demo.appspot.com/code&
+		grant_type=authorization_code
+		########################################################################
+		'''
+		access_params['client_id'] = cs['client_id']
+		access_params['client_secret'] = '7mZpvp7IZtfIgpZT-mA8qa7B'
+		access_params['redirect_uri'] = cs['redirect_uri']
+		access_params['grant_type'] =  'authorization_code'
+		params =  urllib.urlencode(access_params)
+		url_access_token = 'https://accounts.google.com/o/oauth2/token' 
+		print '**********************' + url_access_token
+		req = urllib2.Request(url_access_token, params) #Post request
 	
-	access_token = ast.literal_eval(response.read())
+		response = urllib2.urlopen(req)
 	
-	'''
-	 Get access Token JSON in following formAT AND SAVE IN THE FILE
-	{
-	  "access_token":"1/fFAGRNJru1FTz70BzhT3Zg",
-	  "expires_in":3920,
-	  "token_type":"Bearer"
-	}	
-	'''
-	file = open('/home/jatin/Github/scraping/access_token.json','w')
-	file.write(str(access_token))
+		access_token = ast.literal_eval(response.read())
 	
-	
-	response_body = test_html % url_access_token 
+		'''
+		 Get access Token JSON in following formAT AND SAVE IN THE FILE
+		{
+		  "access_token":"1/fFAGRNJru1FTz70BzhT3Zg",
+		  "expires_in":3920,
+		  "token_type":"Bearer"
+		}	
+		'''
+		file = open('/home/jatin/Github/scraping/access_token.json','w')
+		file.write(str(access_token))
+		print "************************************Token Recieved***************************8"		
+		
+		
+		reg_url =  environ['wsgi.url_scheme'] + '://' + environ['HTTP_HOST'] + '/register'
 
-	status = '200 OK'
+		print reg_url
+
+
+		start_response('302 Found',[('Location',reg_url)])
+
+		return ['1']
+		
 	
-	response_headers = [
+#		return register_url(environ,start_response)
+	else:
+		response_body = """ <html>Access Denied</html> """
+	
+		#response_body = test_html % url_access_token 
+
+		status = '200 OK'
+	
+		response_headers = [
 						('Content-Type','text/html'),
 						('Content-Length', str(len(response_body)))
 	                   ]
+		return [response_body]
+	
+#URL Resgiteration Page
+
+def register_url(environ, start_response):
+	response_body = reg_html
+	status = '200 OK'
+	response_headers = [	
+				('Content-Type','text/html'),
+				('Content-Length', str(len(response_body)))
+				]
 	start_response(status, response_headers)
 	return [response_body]
-						
+					
 def application(environ, start_response):
 	if environ['PATH_INFO'] == '/':
 		return index(environ,start_response)
 	elif environ['PATH_INFO'] == '/oauth2callback':
+		return oauth2callback(environ, start_response)
+	elif environ['PATH_INFO'] == '/login':
 		return login(environ, start_response)
+	elif environ['PATH_INFO'] == '/register':
+		return register_url(environ, start_response)
 HOST = 'ubuntu'
 httpd =  make_server('192.168.48.128',8051,application)
 print "Serving the port on 8051"

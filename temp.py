@@ -1,5 +1,9 @@
 from wsgiref.simple_server import make_server
 from cgi import parse_qs, escape
+import urlparse
+
+print urlparse.parse_qs.__doc__
+
 
 main_html = """
 <html>
@@ -32,14 +36,16 @@ def main(environ, start_response):
 
 
 def visit(environ, start_response):
-	qs = parse_qs(environ['QUERY_STRING'])
-	dest = qs.ge('site')[0]
+	
+	qs =urlparse.parse_qs(environ['QUERY_STRING'])
+	
+	dest = qs['site']
 	if dest == 'google':
-		start_response('301 Moved Permanently', [('Location','http://google.com')])
+		start_response('302 Found', [('Location','http://google.com')])
 	else:
-		start_response('301 Moved Permanently', [('Location','http://facebook.com')])
+		start_response('302 Found', [('Location','http://facebook.com')])
 
-	return [1]
+	return ['1']
 
 
 def app(environ, start_response):
