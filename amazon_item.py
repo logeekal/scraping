@@ -50,7 +50,7 @@ def send_alert(original, item_det):
 	send.ehlo()
 	send.starttls()
 	send.ehlo()
-	send.login('jtn.kathuria@gmail.com','intel986821121')
+	send.login('jtn.kathuria@gmail.com','************')
 	send.sendmail(me, me, msg.as_string())
 	send.quit()
 
